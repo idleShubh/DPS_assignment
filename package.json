@@ -8,7 +8,9 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
-    "dev": "npm run dev --workspaces --if-present",
+    "dev": "node scripts/dev.mjs",
+    "dev:backend": "npm run dev --workspace @lagovia/backend",
+    "dev:frontend": "npm run dev --workspace @lagovia/frontend",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces"
   },
