@@ -1,8 +1,9 @@
 import { createApp } from "./app.js";
+import { loadConfig } from "./config.js";
 
-const port = Number(process.env.PORT ?? 3000);
+const config = loadConfig();
 const app = createApp();
 
-app.listen(port, () => {
-  console.log(`Backend listening on http://localhost:${port}`);
+app.listen(config.port, () => {
+  console.log(`Backend listening on http://localhost:${config.port}`);
 });
