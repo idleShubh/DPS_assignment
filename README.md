@@ -4,7 +4,7 @@ Lagovia searches every Belgian railway station whose name contains a submitted s
 
 ## Requirements
 
-- Node.js 20 or newer
+- Node.js 20.12 or newer
 - npm
 
 The application uses the public [iRail API](https://docs.irail.be/) and does not require API credentials. Set a useful contact address in `IRAIL_USER_AGENT` before deploying or making sustained requests.
@@ -19,6 +19,12 @@ npm run dev
 
 Open `http://localhost:5173`. The backend listens on `http://localhost:3000`; Vite proxies `/api` requests to it during development.
 
+If port `3000` is already in use, keep the backend and proxy aligned:
+
+```sh
+PORT=3100 VITE_API_PROXY_TARGET=http://localhost:3100 npm run dev
+```
+
 To run the processes separately:
 
 ```sh
@@ -26,7 +32,7 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
-`VITE_API_BASE_URL` is available for environments where the frontend and API use different origins. Vite reads frontend environment variables from the `frontend` workspace, so place a frontend-specific override in `frontend/.env.local` when needed.
+The combined development command loads the root `.env` before starting either workspace. `VITE_API_BASE_URL` is available for deployments where the frontend and API use different origins. Vite reads build-time frontend environment files from the `frontend` workspace, so place a deployment-specific override in `frontend/.env.production` or provide it through the build environment.
 
 ## Verify
 

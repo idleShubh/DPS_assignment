@@ -1,5 +1,13 @@
 import { spawn } from "node:child_process";
 
+try {
+  process.loadEnvFile(".env");
+} catch (error) {
+  if (error?.code !== "ENOENT") {
+    throw error;
+  }
+}
+
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const workspaceNames = ["@lagovia/backend", "@lagovia/frontend"];
 const children = workspaceNames.map((workspace) =>
