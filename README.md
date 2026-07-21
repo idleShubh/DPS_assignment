@@ -48,7 +48,7 @@ The tests cover normalization, caching, substring matching, the time window, con
 
 ## Deploy to Vercel
 
-The repository uses Vercel's `experimentalServices` configuration: Vite serves `/`, while the `backend` Express service serves `/api/*` through its side-effect-free `src/index.ts` entrypoint.
+The repository uses Vercel Services: top-level rewrites send `/api/*` to Express and all remaining paths to Vite. The backend uses the side-effect-free `src/index.ts` entrypoint.
 
 1. Import this repository into Vercel.
 2. Set the project Framework Preset to **Services**.
