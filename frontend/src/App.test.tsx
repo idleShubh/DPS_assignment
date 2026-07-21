@@ -40,6 +40,29 @@ const successfulResponse: DepartureResponse = {
 };
 
 describe("App", () => {
+  it("renders a useful empty state and lets examples start a search", () => {
+    const client = createClient();
+    vi.mocked(client.getDepartures).mockReturnValue(new Promise(() => undefined));
+    render(<App client={client} />);
+
+    expect(
+      screen.getByRole("heading", { name: "Your departures will appear here" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText((_, element) =>
+        element?.classList.contains("departure-empty__note") ?? false,
+      ).textContent,
+    ).toContain("Multiple matching stations");
+
+    fireEvent.click(screen.getByRole("button", { name: "Search for Mech" }));
+
+    expect(client.getDepartures).toHaveBeenCalledWith(
+      "Mech",
+      expect.any(AbortSignal),
+    );
+    expect(screen.getByText("Finding departures for “Mech”…")).toBeTruthy();
+  });
+
   it("submits the query and renders returned departures", async () => {
     const client = createClient();
     vi.mocked(client.getDepartures).mockResolvedValue(successfulResponse);

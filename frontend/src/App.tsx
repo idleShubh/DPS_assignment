@@ -38,7 +38,7 @@ export function App({ client = departuresClient }: AppProps) {
         <h2 className="results-panel__title" id="results-title">
           Departures
         </h2>
-        <SearchOutcome state={state} />
+        <SearchOutcome state={state} onSearch={search} />
       </main>
     </div>
   );
@@ -46,11 +46,13 @@ export function App({ client = departuresClient }: AppProps) {
 
 function SearchOutcome({
   state,
+  onSearch,
 }: {
   readonly state: ReturnType<typeof useDepartureSearch>["state"];
+  readonly onSearch: (query: string) => void | Promise<void>;
 }) {
   if (state.status === "idle") {
-    return null;
+    return <DepartureEmptyState onSearch={onSearch} />;
   }
   if (state.status === "loading") {
     return (
@@ -72,6 +74,61 @@ function SearchOutcome({
     );
   }
   return <DepartureResults response={state.data} />;
+}
+
+const exampleStations = ["Bru", "Aac", "Mech"] as const;
+
+function DepartureEmptyState({
+  onSearch,
+}: {
+  readonly onSearch: (query: string) => void | Promise<void>;
+}) {
+  return (
+    <section className="departure-empty" aria-labelledby="empty-state-title">
+      <img
+        className="departure-empty__illustration"
+        src="/assets/departures-empty-state.png"
+        alt=""
+      />
+      <div className="departure-empty__intro">
+        <h3 id="empty-state-title">Your departures will appear here</h3>
+        <p>
+          Search a station to see trains leaving in the next 15 minutes.
+        </p>
+      </div>
+      <div className="departure-empty__examples" aria-label="Example searches">
+        {exampleStations.map((station) => (
+          <button
+            key={station}
+            type="button"
+            onClick={() => void onSearch(station)}
+            aria-label={`Search for ${station}`}
+          >
+            {station}
+          </button>
+        ))}
+      </div>
+      <div className="departure-preview" aria-hidden="true">
+        <div className="departure-preview__head">
+          <span>Time</span>
+          <span>Destination</span>
+          <span>Delay</span>
+          <span>Platform</span>
+        </div>
+        {[0, 1].map((row) => (
+          <div className="departure-preview__row" key={row}>
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+        ))}
+      </div>
+      <p className="departure-empty__note">
+        Live data <span aria-hidden="true">·</span> Multiple matching stations
+      </p>
+    </section>
+  );
 }
 
 function RailMark() {

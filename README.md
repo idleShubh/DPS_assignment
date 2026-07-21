@@ -48,14 +48,14 @@ The tests cover normalization, caching, substring matching, the time window, con
 
 ## Deploy to Vercel
 
-The repository includes a multi-service [`vercel.json`](vercel.json): Vite serves the frontend, Express serves the backend, `/api/*` is routed to the backend, and all remaining paths go to the frontend.
+The repository uses Vercel's `experimentalServices` configuration: Vite serves `/`, while the `backend` Express service serves `/api/*` through its side-effect-free `src/index.ts` entrypoint.
 
 1. Import this repository into Vercel.
 2. Set the project Framework Preset to **Services**.
 3. Configure `IRAIL_USER_AGENT` with a real contact address. The remaining backend variables in `.env.example` are optional tuning overrides.
 4. Deploy from the repository root.
 
-The frontend uses same-origin `/api/departures` requests in production, so `VITE_API_BASE_URL` should normally remain unset on Vercel.
+Keep `VITE_API_BASE_URL` unset so the frontend uses same-origin requests. After deployment, verify `/api/health`, then test `/api/departures?q=Bru`.
 
 ## API
 

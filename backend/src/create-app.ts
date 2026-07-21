@@ -19,7 +19,7 @@ export function createApp(dependencies: AppDependencies) {
   app.disable("x-powered-by");
   app.use(requestIdMiddleware);
   app.use(createRequestLoggingMiddleware(logger));
-  app.get("/health", (_request, response) => {
+  app.get(["/health", "/api/health"], (_request, response) => {
     response.json({ status: "ok" });
   });
   app.use("/api/departures", createDeparturesRouter(dependencies.departureSearch));
