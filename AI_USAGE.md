@@ -9,6 +9,8 @@ No AI-generated answer was treated as authoritative for the iRail contract. Beha
 
 ## Representative prompts and planning work
 
+The complete AI-assisted working transcript is included in [`prompts.md`](./prompts.md). It records the prompts, responses, implementation checkpoints, verification steps and deployment troubleshooting. The summary below highlights the decisions most relevant to the submitted solution.
+
 The working conversation included prompts covering:
 
 - Identify the actual problem, hidden requirements, edge cases, likely interview criteria and failure scenarios without writing code.
@@ -20,7 +22,7 @@ The working conversation included prompts covering:
 - Break the project into independently buildable tasks with objectives, files, outputs and acceptance criteria.
 - Implement and verify those tasks incrementally rather than generating the whole assignment in one pass.
 
-Public conversation links are not included because no public share URL was created for the private working session.
+No public conversation link was created; the repository-local transcript is provided instead.
 
 ## Accepted substantially as generated
 
