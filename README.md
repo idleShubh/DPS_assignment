@@ -6,7 +6,7 @@ Lagovia searches every Belgian railway station whose name contains a submitted s
 
 ## Requirements
 
-- Node.js 20.12 or newer
+- Node.js 20.19 or newer
 - npm
 
 The application uses the public [iRail API](https://docs.irail.be/) and does not require API credentials. Set a useful contact address in `IRAIL_USER_AGENT` before deploying or making sustained requests.
