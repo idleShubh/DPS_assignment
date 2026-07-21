@@ -46,6 +46,17 @@ npm run build
 
 The tests cover normalization, caching, substring matching, the time window, concurrency and partial failures, the HTTP contract, frontend response validation, stale-request cancellation, rendering and the integrated search workflow.
 
+## Deploy to Vercel
+
+The repository includes a multi-service [`vercel.json`](vercel.json): Vite serves the frontend, Express serves the backend, `/api/*` is routed to the backend, and all remaining paths go to the frontend.
+
+1. Import this repository into Vercel.
+2. Set the project Framework Preset to **Services**.
+3. Configure `IRAIL_USER_AGENT` with a real contact address. The remaining backend variables in `.env.example` are optional tuning overrides.
+4. Deploy from the repository root.
+
+The frontend uses same-origin `/api/departures` requests in production, so `VITE_API_BASE_URL` should normally remain unset on Vercel.
+
 ## API
 
 ```http

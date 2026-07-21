@@ -14,14 +14,15 @@ export function App({ client = departuresClient }: AppProps) {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
+      <section className="search-panel" aria-labelledby="page-title">
         <a className="brand" href="/" aria-label="Lagovia home">
           <RailMark />
-          <span>Lagovia</span>
+          <span className="brand__copy">
+            <strong>Lagovia</strong>
+            <small>Train tracker</small>
+          </span>
         </a>
-      </header>
-      <main className="main-content">
-        <section className="search-intro" aria-labelledby="page-title">
+        <div className="search-panel__content">
           <h1 id="page-title">How late is your train?</h1>
           <p>
             Search every matching station for departures scheduled in the next
@@ -31,7 +32,12 @@ export function App({ client = departuresClient }: AppProps) {
             onSearch={search}
             isSubmitting={state.status === "loading"}
           />
-        </section>
+        </div>
+      </section>
+      <main className="results-panel" aria-labelledby="results-title">
+        <h2 className="results-panel__title" id="results-title">
+          Departures
+        </h2>
         <SearchOutcome state={state} />
       </main>
     </div>
@@ -72,13 +78,13 @@ function RailMark() {
   return (
     <svg
       className="brand__mark"
-      viewBox="0 0 54 30"
+      viewBox="0 0 64 36"
       aria-hidden="true"
       focusable="false"
     >
-      <path d="M2 6h25l10 12h15" />
-      <path d="M2 14h20l10 12h20" />
-      <path d="M2 22h14" />
+      <path d="M2 8h31l12 14h17" />
+      <path d="M2 18h24l12 14h24" />
+      <path d="M2 28h17" />
     </svg>
   );
 }

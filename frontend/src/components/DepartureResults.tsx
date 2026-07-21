@@ -55,9 +55,9 @@ export function DepartureResults({ response }: DepartureResultsProps) {
 function StationDepartures({ station }: { readonly station: StationResponse }) {
   return (
     <section className="station-results" aria-labelledby={`station-${station.id}`}>
-      <h2 id={`station-${station.id}`}>
+      <h3 id={`station-${station.id}`}>
         {station.name} <span>({station.departures.length})</span>
-      </h2>
+      </h3>
       {station.departures.length === 0 ? (
         <p className="station-results__empty">No departures in this window.</p>
       ) : (
