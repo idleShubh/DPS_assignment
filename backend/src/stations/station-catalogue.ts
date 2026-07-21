@@ -1,7 +1,11 @@
 import type { Station } from "../domain/station.js";
 import type { IRailClient } from "../irail/irail-client.js";
+import { IRailError } from "../irail/irail-errors.js";
 import { systemClock, type Clock } from "../time/clock.js";
-import { normalizeStations } from "./station-normalizer.js";
+import {
+  InvalidStationError,
+  normalizeStations,
+} from "./station-normalizer.js";
 
 interface CachedStations {
   readonly loadedAt: number;
@@ -67,7 +71,19 @@ export class CachedStationCatalogue implements StationCatalogue {
 
   private async loadStations(): Promise<readonly Station[]> {
     const response = await this.irailClient.getStations();
-    const stations = normalizeStations(response.stations);
+    let stations: readonly Station[];
+    try {
+      stations = normalizeStations(response.stations);
+    } catch (error) {
+      if (error instanceof InvalidStationError) {
+        throw new IRailError("iRail returned invalid station data.", {
+          kind: "invalid-response",
+          endpoint: "stations",
+          cause: error,
+        });
+      }
+      throw error;
+    }
 
     this.cache = {
       loadedAt: this.clock.now(),

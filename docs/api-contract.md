@@ -69,7 +69,7 @@ Status: `200 OK`
 - Departures are ordered by scheduled time, with departure ID as the tie-breaker.
 - A train appearing at multiple matching stations appears once in each applicable station group. These are distinct departure events.
 - Exact duplicate records within the same station are removed using their stable departure identity.
-- `delayMinutes` is a non-negative whole number. The conversion rule from upstream seconds will be documented with the normalizer.
+- `delayMinutes` is a non-negative whole number. Upstream delay seconds are divided by 60 and floored, so 119 seconds is displayed as 1 minute.
 - `cancelled` is always a JSON boolean.
 - `partial` is `true` exactly when at least one matching station succeeded and at least one matching station failed.
 

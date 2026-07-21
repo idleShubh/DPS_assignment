@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { IRailClient } from "../../src/irail/irail-client.js";
+import { IRailError } from "../../src/irail/irail-errors.js";
 import type { IRailStationsResponse } from "../../src/irail/irail-types.js";
 import { CachedStationCatalogue } from "../../src/stations/station-catalogue.js";
 
@@ -130,6 +131,24 @@ describe("CachedStationCatalogue", () => {
     );
 
     await expect(catalogue.getStations()).rejects.toBe(failure);
+  });
+
+  it("classifies invalid normalized station data as an upstream response error", async () => {
+    const client = createClient();
+    vi.mocked(client.getStations).mockResolvedValue({
+      ...firstResponse,
+      stations: [{ id: "BE.NMBS.1", name: "   ", standardname: "Brugge" }],
+    });
+    const catalogue = new CachedStationCatalogue(
+      client,
+      60_000,
+      createClock(1_000),
+    );
+
+    await expect(catalogue.getStations()).rejects.toMatchObject<Partial<IRailError>>({
+      kind: "invalid-response",
+      endpoint: "stations",
+    });
   });
 });
 
