@@ -11,10 +11,12 @@ The endpoint finds every station whose supported name contains `q`, then returns
 - `q` is required.
 - Leading and trailing whitespace is removed before validation and matching.
 - The trimmed query must contain at least three Unicode characters.
-- Substring matching is case-insensitive.
+- Substring matching is case- and accent-insensitive.
+- Matching considers both the localized display name returned in English and iRail's standard station name.
+- Punctuation such as hyphens remains significant; substring matching does not silently become fuzzy matching.
 - The successful response echoes the trimmed query while preserving its submitted casing.
 
-The exact accent and multilingual matching policy will be finalized with the station-search implementation and documented here before release.
+For example, `liege` matches `Liège-Guillemins`, and `brux` can match the standard or alternative name of a station displayed as `Brussels-Central`. Misspellings remain outside the core substring behavior and belong to the optional fuzzy-search bonus.
 
 ## Time-window semantics
 
