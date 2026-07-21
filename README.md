@@ -1,5 +1,7 @@
 # Lagovia Train Tracker
 
+[![CI](https://github.com/idleShubh/DPS_assignment/actions/workflows/ci.yml/badge.svg)](https://github.com/idleShubh/DPS_assignment/actions/workflows/ci.yml)
+
 Lagovia searches every Belgian railway station whose name contains a submitted substring and shows departures scheduled in one consistent 15-minute window. Results are grouped by station and include scheduled time, train number, destination, delay and cancellation status.
 
 ## Requirements
