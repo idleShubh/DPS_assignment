@@ -6,6 +6,7 @@ import type {
 import type { Station } from "../domain/station.js";
 import type { IRailClient } from "../irail/irail-client.js";
 import { IRailError } from "../irail/irail-errors.js";
+import { noopLogger, type Logger } from "../logging/logger.js";
 import type { StationCatalogue } from "../stations/station-catalogue.js";
 import { findStationsBySubstring } from "../stations/station-search.js";
 import { systemClock, type Clock } from "../time/clock.js";
@@ -24,6 +25,7 @@ interface SearchDeparturesOptions {
   readonly windowMinutes: number;
   readonly concurrency: number;
   readonly clock?: Clock;
+  readonly logger?: Logger;
 }
 
 type StationResult =
@@ -31,7 +33,14 @@ type StationResult =
   | { readonly ok: false; readonly warning: DepartureWarning };
 
 export interface DepartureSearchService {
-  search(query: string): Promise<DepartureSearchResult>;
+  search(
+    query: string,
+    context?: DepartureSearchContext,
+  ): Promise<DepartureSearchResult>;
+}
+
+export interface DepartureSearchContext {
+  readonly requestId?: string;
 }
 
 export class AllLiveboardsFailedError extends Error {
@@ -56,6 +65,7 @@ export class SearchDepartures implements DepartureSearchService {
   private readonly windowMinutes: number;
   private readonly concurrency: number;
   private readonly clock: Clock;
+  private readonly logger: Logger;
 
   constructor(options: SearchDeparturesOptions) {
     this.stationCatalogue = options.stationCatalogue;
@@ -63,9 +73,13 @@ export class SearchDepartures implements DepartureSearchService {
     this.windowMinutes = options.windowMinutes;
     this.concurrency = options.concurrency;
     this.clock = options.clock ?? systemClock;
+    this.logger = options.logger ?? noopLogger;
   }
 
-  async search(query: string): Promise<DepartureSearchResult> {
+  async search(
+    query: string,
+    context: DepartureSearchContext = {},
+  ): Promise<DepartureSearchResult> {
     const referenceInstant = new Date(this.clock.now());
     const window = createDepartureWindow(referenceInstant, this.windowMinutes);
     const catalogue = await this.stationCatalogue.getStations();
@@ -78,7 +92,7 @@ export class SearchDepartures implements DepartureSearchService {
     const results = await mapWithConcurrency(
       matchingStations,
       this.concurrency,
-      (station) => this.loadStation(station, window),
+      (station) => this.loadStation(station, window, context),
     );
     const stations = results
       .filter((result): result is Extract<StationResult, { ok: true }> => result.ok)
@@ -88,7 +102,29 @@ export class SearchDepartures implements DepartureSearchService {
       .map((result) => result.warning);
 
     if (stations.length === 0) {
+      this.logger.warn(
+        {
+          event: "departure_search_failed",
+          ...requestLogContext(context),
+          query,
+          failedStationIds: warnings.map(({ station }) => station.id),
+        },
+        "Every matching liveboard failed",
+      );
       throw new AllLiveboardsFailedError(warnings);
+    }
+
+    if (warnings.length > 0) {
+      this.logger.warn(
+        {
+          event: "departure_search_partial",
+          ...requestLogContext(context),
+          query,
+          successfulStationCount: stations.length,
+          failedStationIds: warnings.map(({ station }) => station.id),
+        },
+        "Departure search returned partial results",
+      );
     }
 
     return Object.freeze({
@@ -102,6 +138,7 @@ export class SearchDepartures implements DepartureSearchService {
   private async loadStation(
     station: Station,
     window: DepartureSearchResult["window"],
+    context: DepartureSearchContext,
   ): Promise<StationResult> {
     try {
       const liveboard = await this.irailClient.getLiveboard(station.id);
@@ -119,6 +156,16 @@ export class SearchDepartures implements DepartureSearchService {
       };
     } catch (error) {
       const code = warningCodeFor(error);
+      this.logger.warn(
+        {
+          event: "liveboard_failed",
+          ...requestLogContext(context),
+          stationId: station.id,
+          warningCode: code,
+          ...describeLiveboardError(error),
+        },
+        "Station liveboard failed",
+      );
       return {
         ok: false,
         warning: Object.freeze({
@@ -128,6 +175,27 @@ export class SearchDepartures implements DepartureSearchService {
       };
     }
   }
+}
+
+function requestLogContext(
+  context: DepartureSearchContext,
+): Record<string, unknown> {
+  return context.requestId ? { requestId: context.requestId } : {};
+}
+
+function describeLiveboardError(error: unknown): Record<string, unknown> {
+  if (error instanceof IRailError) {
+    return {
+      upstreamKind: error.kind,
+      upstreamStatus: error.status,
+    };
+  }
+
+  if (error instanceof InvalidDepartureError) {
+    return { upstreamKind: "invalid-departure" };
+  }
+
+  return {};
 }
 
 function warningCodeFor(error: unknown): DepartureWarning["code"] {

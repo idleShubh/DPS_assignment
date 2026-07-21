@@ -8,6 +8,7 @@ import type { Station } from "../../src/domain/station.js";
 import type { IRailClient } from "../../src/irail/irail-client.js";
 import { IRailError } from "../../src/irail/irail-errors.js";
 import type { IRailLiveboardResponse } from "../../src/irail/irail-types.js";
+import type { Logger } from "../../src/logging/logger.js";
 import type { StationCatalogue } from "../../src/stations/station-catalogue.js";
 
 const now = new Date("2026-07-21T10:00:00.000Z");
@@ -46,6 +47,7 @@ describe("SearchDepartures", () => {
 
   it("returns successful stations plus warnings for partial failures", async () => {
     const client = createClient();
+    const logger = createLogger();
     vi.mocked(client.getLiveboard).mockImplementation(async (stationId) => {
       if (stationId === "2") {
         throw new IRailError("timed out", {
@@ -55,9 +57,9 @@ describe("SearchDepartures", () => {
       }
       return liveboard(stationId, []);
     });
-    const service = createService(client, stations);
+    const service = createService(client, stations, { logger });
 
-    const result = await service.search("bru");
+    const result = await service.search("bru", { requestId: "request-123" });
 
     expect(result.stations).toHaveLength(1);
     expect(result.stations[0]?.station.id).toBe("1");
@@ -67,6 +69,15 @@ describe("SearchDepartures", () => {
         station: { id: "2", name: "Brussels-Central" },
       },
     ]);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "departure_search_partial",
+        requestId: "request-123",
+        successfulStationCount: 1,
+        failedStationIds: ["2"],
+      }),
+      "Departure search returned partial results",
+    );
   });
 
   it("classifies malformed departure data as an invalid response", async () => {
@@ -169,7 +180,11 @@ describe("SearchDepartures", () => {
 function createService(
   client: IRailClient,
   catalogueStations: readonly Station[],
-  overrides: { readonly concurrency?: number; readonly clock?: { now(): number } } = {},
+  overrides: {
+    readonly concurrency?: number;
+    readonly clock?: { now(): number };
+    readonly logger?: Logger;
+  } = {},
 ) {
   const catalogue: StationCatalogue = {
     getStations: vi.fn().mockResolvedValue(catalogueStations),
@@ -180,11 +195,16 @@ function createService(
     windowMinutes: 15,
     concurrency: overrides.concurrency ?? 5,
     clock: overrides.clock ?? { now: () => now.getTime() },
+    logger: overrides.logger,
   });
 }
 
 function createClient(): IRailClient {
   return { getStations: vi.fn(), getLiveboard: vi.fn() };
+}
+
+function createLogger(): Logger {
+  return { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
 
 function liveboard(

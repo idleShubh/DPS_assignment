@@ -1,6 +1,7 @@
 import type { Station } from "../domain/station.js";
 import type { IRailClient } from "../irail/irail-client.js";
 import { IRailError } from "../irail/irail-errors.js";
+import { noopLogger, type Logger } from "../logging/logger.js";
 import { systemClock, type Clock } from "../time/clock.js";
 import {
   InvalidStationError,
@@ -25,6 +26,7 @@ export class CachedStationCatalogue implements StationCatalogue {
     private readonly irailClient: IRailClient,
     private readonly ttlMs: number,
     private readonly clock: Clock = systemClock,
+    private readonly logger: Logger = noopLogger,
   ) {}
 
   async getStations(): Promise<readonly Station[]> {
@@ -39,8 +41,6 @@ export class CachedStationCatalogue implements StationCatalogue {
       return await this.refresh();
     } catch (error) {
       if (this.cache) {
-        this.retryRefreshAt =
-          this.clock.now() + Math.min(this.ttlMs, 60_000);
         return this.cache.stations;
       }
 
@@ -61,9 +61,37 @@ export class CachedStationCatalogue implements StationCatalogue {
 
   private refresh(): Promise<readonly Station[]> {
     if (!this.refreshPromise) {
-      this.refreshPromise = this.loadStations().finally(() => {
-        this.refreshPromise = undefined;
-      });
+      this.logger.info(
+        { event: "station_catalogue_refresh_started" },
+        "Refreshing station catalogue",
+      );
+      this.refreshPromise = this.loadStations()
+        .catch((error: unknown) => {
+          const errorContext = describeCatalogueError(error);
+          if (this.cache) {
+            this.retryRefreshAt =
+              this.clock.now() + Math.min(this.ttlMs, 60_000);
+            this.logger.warn(
+              {
+                event: "station_catalogue_stale_fallback",
+                ...errorContext,
+              },
+              "Station catalogue refresh failed; serving stale data",
+            );
+          } else {
+            this.logger.warn(
+              {
+                event: "station_catalogue_unavailable",
+                ...errorContext,
+              },
+              "Station catalogue could not be loaded",
+            );
+          }
+          throw error;
+        })
+        .finally(() => {
+          this.refreshPromise = undefined;
+        });
     }
 
     return this.refreshPromise;
@@ -90,7 +118,27 @@ export class CachedStationCatalogue implements StationCatalogue {
       stations,
     };
     this.retryRefreshAt = undefined;
+    this.logger.info(
+      {
+        event: "station_catalogue_refresh_completed",
+        stationCount: stations.length,
+      },
+      "Station catalogue refreshed",
+    );
 
     return stations;
   }
+}
+
+function describeCatalogueError(error: unknown): Record<string, unknown> {
+  if (error instanceof IRailError) {
+    return {
+      upstreamKind: error.kind,
+      upstreamStatus: error.status,
+    };
+  }
+
+  return {
+    errorName: error instanceof Error ? error.name : "UnknownThrownValue",
+  };
 }

@@ -41,7 +41,7 @@ export function createDeparturesRouter(
     }
 
     try {
-      const result = await departureSearch.search(trimmedQuery);
+      const result = await departureSearch.search(trimmedQuery, { requestId });
       response.json(toDepartureResponse(result, requestId));
     } catch (error) {
       next(error);

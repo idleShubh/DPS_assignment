@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { IRailClient } from "../../src/irail/irail-client.js";
 import { IRailError } from "../../src/irail/irail-errors.js";
+import type { Logger } from "../../src/logging/logger.js";
 import type { IRailStationsResponse } from "../../src/irail/irail-types.js";
 import { CachedStationCatalogue } from "../../src/stations/station-catalogue.js";
 
@@ -85,7 +86,8 @@ describe("CachedStationCatalogue", () => {
       .mockResolvedValueOnce(firstResponse)
       .mockRejectedValueOnce(new Error("upstream unavailable"));
     const clock = createClock(1_000);
-    const catalogue = new CachedStationCatalogue(client, 60_000, clock);
+    const logger = createLogger();
+    const catalogue = new CachedStationCatalogue(client, 60_000, clock, logger);
     const loaded = await catalogue.getStations();
 
     clock.now.mockReturnValue(61_000);
@@ -93,6 +95,13 @@ describe("CachedStationCatalogue", () => {
 
     expect(stale).toBe(loaded);
     expect(client.getStations).toHaveBeenCalledTimes(2);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "station_catalogue_stale_fallback",
+        errorName: "Error",
+      }),
+      "Station catalogue refresh failed; serving stale data",
+    );
   });
 
   it("retries refresh after a failed stale fallback", async () => {
@@ -161,6 +170,10 @@ function createClient(): IRailClient {
 
 function createClock(now: number) {
   return { now: vi.fn(() => now) };
+}
+
+function createLogger(): Logger {
+  return { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
 
 function deferred<T>() {

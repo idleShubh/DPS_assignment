@@ -8,6 +8,7 @@ import {
 } from "../../src/departures/search-departures.js";
 import type { DepartureSearchResult } from "../../src/domain/search-result.js";
 import { IRailError } from "../../src/irail/irail-errors.js";
+import type { Logger } from "../../src/logging/logger.js";
 
 const completeResult: DepartureSearchResult = {
   query: "Bru",
@@ -37,15 +38,18 @@ const completeResult: DepartureSearchResult = {
 describe("GET /api/departures", () => {
   it("returns the documented successful response", async () => {
     const service = createService();
+    const logger = createLogger();
     vi.mocked(service.search).mockResolvedValue(completeResult);
 
-    const response = await request(createApp({ departureSearch: service }))
+    const response = await request(createApp({ departureSearch: service, logger }))
       .get("/api/departures")
       .query({ q: "  Bru  " })
       .expect(200)
       .expect("Content-Type", /json/);
 
-    expect(service.search).toHaveBeenCalledWith("Bru");
+    expect(service.search).toHaveBeenCalledWith("Bru", {
+      requestId: response.body.requestId,
+    });
     expect(response.body).toMatchObject({
       requestId: expect.any(String),
       query: "Bru",
@@ -73,6 +77,17 @@ describe("GET /api/departures", () => {
       warnings: [],
     });
     expect(response.headers["x-request-id"]).toBe(response.body.requestId);
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "request_completed",
+        requestId: response.body.requestId,
+        method: "GET",
+        path: "/api/departures",
+        statusCode: 200,
+        durationMs: expect.any(Number),
+      }),
+      "Request completed",
+    );
   });
 
   it.each([
@@ -122,6 +137,7 @@ describe("GET /api/departures", () => {
 
   it("maps total liveboard timeouts to 504", async () => {
     const service = createService();
+    const logger = createLogger();
     vi.mocked(service.search).mockRejectedValue(
       new AllLiveboardsFailedError([
         {
@@ -131,11 +147,20 @@ describe("GET /api/departures", () => {
       ]),
     );
 
-    const response = await request(createApp({ departureSearch: service }))
+    const response = await request(createApp({ departureSearch: service, logger }))
       .get("/api/departures?q=Bru")
       .expect(504);
 
     expect(response.body.error.code).toBe("UPSTREAM_TIMEOUT");
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "request_upstream_failure",
+        requestId: response.body.error.requestId,
+        errorCode: "UPSTREAM_TIMEOUT",
+        failedStationIds: ["1"],
+      }),
+      "All matching liveboards failed",
+    );
   });
 
   it("maps station-catalogue failures to an upstream error", async () => {
@@ -157,19 +182,34 @@ describe("GET /api/departures", () => {
 
   it("does not expose unexpected internal errors", async () => {
     const service = createService();
+    const logger = createLogger();
     vi.mocked(service.search).mockRejectedValue(
       new Error("sensitive implementation detail"),
     );
 
-    const response = await request(createApp({ departureSearch: service }))
+    const response = await request(createApp({ departureSearch: service, logger }))
       .get("/api/departures?q=Bru")
       .expect(500);
 
     expect(response.body.error.code).toBe("INTERNAL_ERROR");
     expect(JSON.stringify(response.body)).not.toContain("sensitive");
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "unexpected_request_error",
+        requestId: response.body.error.requestId,
+        errorName: "Error",
+        errorMessage: "sensitive implementation detail",
+        stack: expect.any(String),
+      }),
+      "Unexpected request error",
+    );
   });
 });
 
 function createService(): DepartureSearchService {
   return { search: vi.fn() };
+}
+
+function createLogger(): Logger {
+  return { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
